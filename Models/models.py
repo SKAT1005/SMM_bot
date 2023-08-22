@@ -32,7 +32,6 @@ class User(models.Model):
     pay_balanse = models.BooleanField(default=False, verbose_name='Пополняет ли пользователь баланс')
     last_pay_id = models.CharField(max_length=128, blank=True, null=True, verbose_name='Последний ID платежа')
     channel_and_group = models.ManyToManyField('GroupAndChennel', blank=True, verbose_name='Группы и чаты пользователя')
-    command_start = models.IntegerField(default=0, verbose_name='Сколько раз использовал комманду /start')
 
 
 class Receipts(models.Model):
