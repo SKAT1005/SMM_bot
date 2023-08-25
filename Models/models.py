@@ -23,15 +23,24 @@ class User(models.Model):
     user_id = models.IntegerField(verbose_name='ID пользователя')
     inviting_user = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True,
                                       related_name='inviting', verbose_name='Пригласивший пользователь')
-    invited_users = models.ManyToManyField('self', null=True, related_name='invited_user', blank=True,
+    invited_users = models.ManyToManyField('self', related_name='invited_user', blank=True,
                                            verbose_name='Приглашенные пользователи')
     balance = models.IntegerField(default=0, verbose_name='Баланс')
-    orders = models.ManyToManyField('Orders', null=True, blank=True, related_name='order',
+    orders = models.ManyToManyField('Orders', blank=True, related_name='order',
                                     verbose_name='Заказы')
     money_earned = models.IntegerField(default=0, verbose_name='Денег заработано')
     pay_balanse = models.BooleanField(default=False, verbose_name='Пополняет ли пользователь баланс')
-    last_pay_id = models.CharField(max_length=128, blank=True, null=True, verbose_name='Последний ID платежа')
+    last_pay_id = models.CharField(max_length=128, blank=True, verbose_name='Последний ID платежа')
     channel_and_group = models.ManyToManyField('GroupAndChennel', blank=True, verbose_name='Группы и чаты пользователя')
+    bots = models.ManyToManyField('Bot', blank=True, verbose_name='Боты пользователя')
+
+
+class Bot(models.Model):
+    token = models.CharField(max_length=64, verbose_name='Токен бота')
+    is_active = models.BooleanField(default=False, verbose_name='Активирован ли бот')
+
+    def __str__(self):
+        return self.token
 
 
 class Receipts(models.Model):
@@ -39,7 +48,7 @@ class Receipts(models.Model):
     name = models.CharField(max_length=64, verbose_name='Имя чека')
     price = models.FloatField(verbose_name='Сумма чека')
     number = models.IntegerField(default=1, verbose_name='Колличество пользховаетлей, которым можно отправить чек')
-    group_or_channels = models.ManyToManyField('GroupAndChennel', null=True, blank=True,
+    group_or_channels = models.ManyToManyField('GroupAndChennel', blank=True,
                                                verbose_name='Группы и чаты для проверки')
     user_use = models.ManyToManyField('User', related_name='use_user', verbose_name='Пользователи, использовавшие чек')
 
