@@ -43,3 +43,8 @@ class ReceiptsAdmin(admin.ModelAdmin):
 @admin.register(GroupAndChennel)
 class GroupAndChennelAdmin(admin.ModelAdmin):
     pass
+
+
+@admin.register(Bot)
+class BotAdmin(admin.ModelAdmin):
+    pass
