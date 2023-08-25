@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from Models.models import User, Product, Orders, Category, FAQ, Message, API, Type_API, Receipts, GroupAndChennel
+from Models.models import User, Product, Orders, Category, FAQ, Message, API, Type_API, Receipts, GroupAndChennel, Bot
 
 
 @admin.register(User)
