@@ -19,75 +19,78 @@ import urllib3
 from telebot import types
 from Models.models import User, Category, Product, Orders, FAQ, Message, Receipts, GroupAndChennel, Type_API, API, Bot
 
-shop_id = 'shop_id'
-api_key = 'api_key'
-secret_key = 'secret_key'
-smmplanet_api_key = 'smmplanet_api_key'
+shop_id = '1E899BDC9573916359BC151ADF7A1F9F'
+api_key = 'w2TpGdzxmkbCX1uF'
+secret_key = 'ODjAeduz'
+smmplanet_api_key = '2eeABucb2aUB3VScDtfIjNjod0okvNK6'
 
 
 def update_services():
     sleep(5)
     while True:
-        if datetime.now().hour == 4:
-            data = {
-                'key': smmplanet_api_key,
-                'action': 'services',
-            }
-            url = 'https://smmpanel.ru/api/v1'
-            response = requests.post(url, data=data)
-            services = json.loads(response.text)
-            products = Product.objects.all()
-            products_list = []
-            type_api = Type_API.objects.get(API_url=url)
-            api = API.objects.get(type=type_api)
-            for service in services:
-                a = True
-                service_id = int(service['service'])
-                price = float(service['rate']) * 10
-                min_summ = int(service['min'])
-                max_summ = int(service['max'])
-                category = service['category'].split()[0]
-                subcategory = service['category'].split()[1]
-                name = service['name']
-                description = service['desc']
-                for product in products:
-                    if product.servis_id == service_id:
-                        products_list.append(product)
-                        a = False
-                        product.price = price
-                        product.min_summ = min_summ
-                        product.max_summ = max_summ
-                        product.category.category.name = category
-                        product.category.name = subcategory
-                        product.name = name
-                        product.description = description
-                        product.save()
-                        break
-                if a:
-                    product_subcategory = Category.objects.filter(name=subcategory)
-                    if not product_subcategory:
-                        product_category = Category.objects.filter(name=category)
-                        if not product_category:
-                            product_category = Category.objects.create(
-                                name=category
+        try:
+            if datetime.now().hour == 4:
+                data = {
+                    'key': smmplanet_api_key,
+                    'action': 'services',
+                }
+                url = 'https://smmpanel.ru/api/v1'
+                response = requests.post(url, data=data)
+                services = json.loads(response.text)
+                products = Product.objects.all()
+                products_list = []
+                type_api = Type_API.objects.get(API_url=url)
+                api = API.objects.get(type=type_api)
+                for service in services:
+                    a = True
+                    service_id = int(service['service'])
+                    price = float(service['rate']) * 10
+                    min_summ = int(service['min'])
+                    max_summ = int(service['max'])
+                    category = service['category'].split()[0]
+                    subcategory = service['category'].split()[1]
+                    name = service['name']
+                    description = service['desc']
+                    for product in products:
+                        if product.servis_id == service_id:
+                            products_list.append(product)
+                            a = False
+                            product.price = price
+                            product.min_summ = min_summ
+                            product.max_summ = max_summ
+                            product.category.category.name = category
+                            product.category.name = subcategory
+                            product.name = name
+                            product.description = description
+                            product.save()
+                            break
+                    if a:
+                        product_subcategory = Category.objects.filter(name=subcategory)
+                        if not product_subcategory:
+                            product_category = Category.objects.filter(name=category)
+                            if not product_category:
+                                product_category = Category.objects.create(
+                                    name=category
+                                )
+                            product_subcategory = Category.objects.create(
+                                parents=product_category,
+                                name=subcategory
                             )
-                        product_subcategory = Category.objects.create(
-                            parents=product_category,
-                            name=subcategory
+                        Product.objects.create(
+                            api=api,
+                            servis_id=service_id,
+                            category=product_subcategory,
+                            min_summ=min_summ,
+                            max_summ=max_summ,
+                            name=name,
+                            description=description,
+                            price=price,
                         )
-                    Product.objects.create(
-                        api=api,
-                        servis_id=service_id,
-                        category=product_subcategory,
-                        min_summ=min_summ,
-                        max_summ=max_summ,
-                        name=name,
-                        description=description,
-                        price=price,
-                    )
-            for product in products:
-                if product not in products_list:
-                    product.delete()
+                for product in products:
+                    if product not in products_list:
+                        product.delete()
+        except Exception:
+            pass
 
 
 def check_deposits(token):
@@ -96,35 +99,38 @@ def check_deposits(token):
     while True:
         users = User.objects.filter(pay_balanse=True)
         for user in users:
-            data = {
-                'shop_id': shop_id,
-                'nonce': int(time()),
-                'payment_id': user.user_id
-            }
+            try:
+                data = {
+                    'shop_id': shop_id,
+                    'nonce': int(time()),
+                    'payment_id': user.user_id
+                }
 
-            body = json.dumps(data)
-            sign = hmac.new(api_key.encode(), body.encode(), hashlib.sha256).hexdigest()
+                body = json.dumps(data)
+                sign = hmac.new(api_key.encode(), body.encode(), hashlib.sha256).hexdigest()
 
-            headers = {
-                'Authorization': 'Bearer ' + sign,
-                'Content-Type': 'application/json'
-            }
+                headers = {
+                    'Authorization': 'Bearer ' + sign,
+                    'Content-Type': 'application/json'
+                }
 
-            url = 'https://tegro.money/api/order/'
+                url = 'https://tegro.money/api/order/'
 
-            response = requests.post(url, data=body, headers=headers)
+                response = requests.post(url, data=body, headers=headers)
 
-            todos = json.loads(response.text)
-            if todos['type'] == 'success':
-                data = todos['data']
-                id = data['id']
-                status = data['status']
-                if status == 1 and user.last_pay_id != id:
-                    user.balance += data['amount']
-                    user.pay_balanse = False
-                    user.last_pay_id = id
-                    user.save()
-                    bot.send_message(chat_id=user.user_id, text='Ваш баланс успешно пополнен')
+                todos = json.loads(response.text)
+                if todos['type'] == 'success':
+                    data = todos['data']
+                    id = data['id']
+                    status = data['status']
+                    if status == 1 and user.last_pay_id != id:
+                        user.balance += data['amount']
+                        user.pay_balanse = False
+                        user.last_pay_id = id
+                        user.save()
+                        bot.send_message(chat_id=user.user_id, text='Ваш баланс успешно пополнен')
+            except Exception:
+                pass
 
 
 def check_order_status(token):
@@ -139,38 +145,44 @@ def check_order_status(token):
         'Cancelled': 'Отменён',
     }
     while True:
-        orders = Orders.objects.filter(status__in=['Новый', 'В работе'])
-        for order in orders:
-            data = {
-                'key': order.product.api.API_key,
-                'action': 'status',
-                'order': order.order_id
-            }
-            url = order.product.api.type.API_url
-            response = requests.post(url, data=data)
-            status = json.loads(response.text)['status']
-            if order.status != status:
-                order.status = status_tuple[status]
-                order.save()
-                bot.send_message(chat_id=order.order.user_id, text='Статус вашего заказа обновлен')
+        try:
+            orders = Orders.objects.filter(status__in=['Новый', 'В работе'])
+            for order in orders:
+                data = {
+                    'key': order.product.api.API_key,
+                    'action': 'status',
+                    'order': order.order_id
+                }
+                url = order.product.api.type.API_url
+                response = requests.post(url, data=data)
+                status = json.loads(response.text)['status']
+                if order.status != status:
+                    order.status = status_tuple[status]
+                    order.save()
+                    bot.send_message(chat_id=order.order.user_id, text='Статус вашего заказа обновлен')
+        except Exception:
+            pass
 
 
 def send_message(token):
     sleep(2)
     bot = telebot.TeleBot(token)
     while True:
-        messages = Message.objects.all()
-        users = User.objects.all()
-        if messages:
-            for message in messages:
-                for user in users:
-                    chat_id = user.user_id
-                    try:
-                        bot.send_message(chat_id=chat_id, text=message.message)
-                        bot.send_photo(chat_id=chat_id, photo=message.photo)
-                    except Exception:
-                        pass
-                message.delete()
+        try:
+            messages = Message.objects.all()
+            users = User.objects.all()
+            if messages:
+                for message in messages:
+                    for user in users:
+                        chat_id = user.user_id
+                        try:
+                            bot.send_message(chat_id=chat_id, text=message.message)
+                            bot.send_photo(chat_id=chat_id, photo=message.photo)
+                        except Exception:
+                            pass
+                    message.delete()
+        except Exception:
+            pass
 
 
 def activate_bot(token):
@@ -191,7 +203,10 @@ def activate_bot(token):
     def start(message):
 
         user_id = message.from_user.id
-        bot.delete_message(chat_id=user_id, message_id=message.id)
+        try:
+            bot.delete_message(chat_id=user_id, message_id=message.id)
+        except Exception:
+            pass
 
         if 'M' in message.text:
             if not User.objects.filter(user_id=user_id):
@@ -237,7 +252,10 @@ def activate_bot(token):
         user = User.objects.get(user_id=call.from_user.id)
         if call.message:
             data = call.data
-            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+            except Exception:
+                pass
             if data == 'menu':
                 main_menu(chat_id)
 
@@ -331,7 +349,10 @@ def activate_bot(token):
                 receipt.delete()
                 msg = bot.send_message(chat_id=chat_id, text='Ваш чек был удален')
                 sleep(2)
-                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                try:
+                    bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                except Exception:
+                    pass
                 all_receipts(chat_id=chat_id, user=user)
 
             elif data.split('|')[0] == 'checking_subscription':
@@ -375,7 +396,10 @@ def activate_bot(token):
                 delite_bot.delete()
                 msg = bot.send_message(chat_id=chat_id, text='Бот успешно удален')
                 sleep(3)
-                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                try:
+                    bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                except Exception:
+                    pass
                 main_menu(chat_id=chat_id)
 
     def pagination(markup, page, pagination_start, pagination_end, counter, category=None):
@@ -395,6 +419,8 @@ def activate_bot(token):
             markup.add(last_page, next_page)
 
     def main_menu(chat_id):
+        text = 'SmoFastBot - Это бот для помощи в продвижении ваших социальных сетей. \n' \
+               'С помощью этого бота вы можете заказать различные услуги для продвижения своих социальных сетей'
         markup = types.InlineKeyboardMarkup(row_width=2)
         button1 = types.InlineKeyboardButton('🔥Создать новый заказ', callback_data='category')
         button2 = types.InlineKeyboardButton('📋Мои заказы', callback_data='my_order')
@@ -404,7 +430,7 @@ def activate_bot(token):
         button6 = types.InlineKeyboardButton('💡FAQ', callback_data='faq')
         button7 = types.InlineKeyboardButton('🧾Чеки', callback_data='receipts')
         markup.add(button1, button2, button3, button4, button5, button6, button7)
-        bot.send_message(chat_id, 'Главное меню', reply_markup=markup, parse_mode="MarkdownV2")
+        bot.send_message(chat_id=chat_id, text=text, reply_markup=markup, parse_mode="MarkdownV2")
 
     def categorys(chat_id, pagination_start=0, pagination_end=10):
         categorys = Category.objects.filter(parents=None)[pagination_start:pagination_end]
@@ -471,11 +497,15 @@ def activate_bot(token):
         except Exception:
             a = False
             error_message = '❌Указан неверный адрес или ссылка на закрытую группу/профиль/канал❌'
-            new_order_step_two(message=message, chat_id=chat_id, product=product, message_id=message_id,
-                               error_message=error_message, number=number)
+            bot.send_message(chat_id=chat_id, text=error_message)
+            sleep(4)
+            new_order_step_two(message=message, chat_id=chat_id, product=product, message_id=message_id, number=number)
         if a:
-            bot.delete_message(chat_id=chat_id, message_id=message.id)
-            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=message.id)
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+            except Exception:
+                pass
             if user.balance >= total_price:
                 if user.inviting_user:
                     user.inviting_user.balance += total_price * 0.12
@@ -499,7 +529,10 @@ def activate_bot(token):
                                                              'Ожидайте начала выполнения. Наблюдать за заказами и их статусами Вы можете в разделе:\n'
                                                              '📋Мои заказы')
                 sleep(4)
-                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                try:
+                    bot.delete_message(chat_id=chat_id, message_id=msg.id)
+                except Exception:
+                    pass
                 main_menu(chat_id)
             else:
                 amount = total_price - user.balance
@@ -508,9 +541,12 @@ def activate_bot(token):
                 sleep(2)
                 replenish_balance(message=msg, chat_id=chat_id, message_id=msg.id, user=user, amount=amount)
 
-    def new_order_step_two(message, chat_id, product, message_id, error_message='', number=False):
+    def new_order_step_two(message, chat_id, product, message_id, number=False):
         a = True
-        bot.delete_message(chat_id=chat_id, message_id=message.id)
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=message.id)
+        except Exception:
+            pass
         if not number:
             try:
                 number = int(message.text)
@@ -518,24 +554,30 @@ def activate_bot(token):
                     raise ValueError
             except ValueError:
                 a = False
-                bot.delete_message(chat_id, message_id)
+                try:
+                    bot.delete_message(chat_id, message_id)
+                except Exception:
+                    pass
                 error_message = f'❌Введите число от {product.min_summ} до {product.max_summ}❌'
-                new_order_step_one(chat_id=chat_id, product_id=product.id, error_message=error_message)
+                bot.send_message(chat_id=chat_id, text=error_message)
+                sleep(4)
+                new_order_step_one(chat_id=chat_id, product_id=product.id)
 
         if a:
-            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+            except Exception:
+                pass
             msg = bot.send_message(chat_id,
-                                   f'{error_message}\n'
                                    f'🔥 Заказ услуги: {product.name}\n'
                                    f'‍♂️ {product.description}\n'
                                    f'💳 Цена - {product.price} RUB. за одну единицу (Подписчик, лайк, репост)\n'
                                    f'👇 Введите адрес целевой страницы (ссылка на фото, профиль, видео)\n')
             bot.register_next_step_handler(msg, new_order_step_three, chat_id, product, msg.id, number)
 
-    def new_order_step_one(chat_id, product_id, error_message=''):
+    def new_order_step_one(chat_id, product_id):
         product = Product.objects.get(id=product_id)
         msg = bot.send_message(chat_id,
-                               f'{error_message}\n'
                                f'🔥 Заказ услуги: {product.name}\n'
                                f'💁‍♂️ {product.description}\n'
                                f'💳 Цена - {product.price} RUB. за одну единицу (Подписчик, лайк, репост)\n'
@@ -566,7 +608,10 @@ def activate_bot(token):
 
     def replenish_balance(message, chat_id, message_id, user, amount=False):
         a = True
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception:
+            pass
         if not amount:
             try:
                 amount = int(message.text)
@@ -575,7 +620,9 @@ def activate_bot(token):
             except Exception:
                 a = False
                 error_message = "❌Введите число, которое больше 1❌"
-                balance(chat_id=chat_id, user=user, error_message=error_message)
+                bot.send_message(chat_id=chat_id, text=error_message)
+                sleep(4)
+                balance(chat_id=chat_id, user=user)
         if a:
             text = 'Перейдите по ссылке для пополнения:'
             markup = types.InlineKeyboardMarkup(row_width=2)
@@ -598,9 +645,8 @@ def activate_bot(token):
             user.save()
             bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
-    def balance(chat_id, user, error_message=''):
-        text = f'{error_message}' \
-               f'Ваш баланс: {user.balance} RUB.' \
+    def balance(chat_id, user):
+        text = f'Ваш баланс: {user.balance} RUB.' \
                '💳 Вы можете пополнить баланс, указав сумму пополнения в рублях 👇:'
         markup = types.InlineKeyboardMarkup(row_width=2)
         menu = types.InlineKeyboardButton('Главное меню', callback_data='menu')
@@ -629,9 +675,13 @@ def activate_bot(token):
                 raise Exception
         except Exception:
             a = False
-            msg = bot.send_message(chat_id=chat_id, text='Введеный токен указан неверно или уже был использован, используйте новый токен')
+            msg = bot.send_message(chat_id=chat_id,
+                                   text='Введеный токен указан неверно или уже был использован, используйте новый токен')
             sleep(3)
-            bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            except Exception:
+                pass
             create_bot_step_one(chat_id=chat_id, user=user)
         if a:
             msg = bot.send_message(chat_id=chat_id, text='Бот успешно подключен')
@@ -640,7 +690,10 @@ def activate_bot(token):
             )
             sleep(3)
             user.bots.add(new_bot)
-            bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            except Exception:
+                pass
             thread = threading.Thread(target=get_tokens)
             thread.start()
             main_menu(chat_id=chat_id)
@@ -694,14 +747,20 @@ def activate_bot(token):
 
     def add_group_or_channel_in_receipt(chat_id, receipt, group_or_channel):
         if receipt.group_or_channels.count() == 3:
-            msg = bot.send_message(chat_id=chat_id, text='К одному чеку ожно подключить не более 3 чатов/групп')
-            bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            msg = bot.send_message(chat_id=chat_id, text='К одному чеку можно подключить не более 3 чатов/групп')
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            except Exception:
+                pass
             connect(chat_id=chat_id, receipt=receipt, user=receipt.user)
         else:
             receipt.group_or_channels.add(group_or_channel)
             msg = bot.send_message(chat_id=chat_id, text='Канал успешно подключен')
             sleep(3)
-            bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            except Exception:
+                pass
             connect(chat_id=chat_id, receipt=receipt, user=receipt.user)
 
     def connect(chat_id, receipt, user):
@@ -753,12 +812,18 @@ def activate_bot(token):
         receipt.save()
         msg = bot.send_message(chat_id=chat_id, text='Канал/группа успешно отключена от вашего чека')
         sleep(3)
-        bot.delete_message(chat_id=chat_id, message_id=msg.id)
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=msg.id)
+        except Exception:
+            pass
         detail_recept(chat_id=chat_id, receipt=receipt)
 
     def create_receipts_step_two(message, chat_id, user, message_id, max_activate, number):
         a = True
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception:
+            pass
         try:
             activates = int(message.text)
             if activates < 1 or activates > max_activate:
@@ -766,9 +831,10 @@ def activate_bot(token):
         except Exception:
             a = False
             error_message = f'❌Введите число от 1 до {max_activate}❌'
+            bot.send_message(chat_id=chat_id, text=error_message)
+            sleep(4)
             create_receipts_step_one_check(message=message, chat_id=chat_id, user=user,
-                                           message_id=message_id,
-                                           error_message=error_message, number=number)
+                                           message_id=message_id, number=number)
 
         if a:
             reciept = Receipts.objects.create(
@@ -779,9 +845,12 @@ def activate_bot(token):
             )
             detail_recept(chat_id=chat_id, receipt=reciept)
 
-    def create_receipts_step_one_check(message, chat_id, user, message_id, error_message='', number=False):
+    def create_receipts_step_one_check(message, chat_id, user, message_id, number=False):
         a = True
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception:
+            pass
         if not number:
             try:
                 number = int(message.text)
@@ -790,14 +859,15 @@ def activate_bot(token):
             except Exception:
                 a = False
                 error_message = f'❌Введите число от 1 до {user.balance}❌'
-                create_receipts_step_one(chat_id=chat_id, user=user, error_message=error_message)
+                bot.send_message(chat_id=chat_id, text=error_message)
+                sleep(4)
+                create_receipts_step_one(chat_id=chat_id, user=user)
         if a:
             markup = types.InlineKeyboardMarkup(row_width=1)
             menu = types.InlineKeyboardButton('Главное меню', callback_data='menu')
             markup.add(menu)
             max_activate = user.balance // number
-            text = f'{error_message}\n' \
-                   'Сколько пользователей смогут активировать этот чек?\n\n' \
+            text = 'Сколько пользователей смогут активировать этот чек?\n\n' \
                    f'Максимум: {max_activate}\n' \
                    f'Минимум: 1\n\n' \
                    'Введите количество активаций:'
@@ -805,9 +875,8 @@ def activate_bot(token):
             bot.register_next_step_handler(msg, create_receipts_step_two, chat_id, user, msg.id,
                                            max_activate, number)
 
-    def create_receipts_step_one(chat_id, user, error_message=''):
-        text = f'{error_message}' \
-               f'Сколько RUB Вы хотите отправить пользователю с помощью чека?\n\n' \
+    def create_receipts_step_one(chat_id, user):
+        text = f'Сколько RUB Вы хотите отправить пользователю с помощью чека?\n\n' \
                f'Максимум: {user.balance}RUB\n' \
                f'Минимум: 1 RUB\n\n' \
                f'Введите сумму чека в RUB'
@@ -867,7 +936,10 @@ def activate_bot(token):
                 a = False
                 msg = bot.send_message(chat_id=user_id, text=f'Вы подписаны не на все каналы')
                 sleep(2)
-                bot.delete_message(chat_id=user_id, message_id=msg.id)
+                try:
+                    bot.delete_message(chat_id=user_id, message_id=msg.id)
+                except Exception:
+                    pass
                 check_subscription_step_one(user_id=user_id, receipt=receipt)
                 break
         if a:
@@ -945,9 +1017,12 @@ def activate_bot(token):
         bot.send_message(message.chat.id, 'Приветствуем тебя в нашем боте')
 
     def capcha_check(message, capcha_name, user_id, message_id1, message_id2, receipt, new_user):
-        bot.delete_message(message_id=message_id1, chat_id=user_id)
-        bot.delete_message(message_id=message_id2, chat_id=user_id)
-        bot.delete_message(message_id=message.id, chat_id=user_id)
+        try:
+            bot.delete_message(message_id=message_id1, chat_id=user_id)
+            bot.delete_message(message_id=message_id2, chat_id=user_id)
+            bot.delete_message(message_id=message.id, chat_id=user_id)
+        except Exception:
+            pass
         if str(message.text) == str(capcha_name):
             msg = bot.send_message(chat_id=user_id, text='Вы успешно прошли капчу')
             if new_user:
@@ -960,12 +1035,18 @@ def activate_bot(token):
                 user = User.objects.get(user_id=user_id)
                 user.command_start = 0
                 user.save()
-            bot.delete_message(message_id=msg.id, chat_id=user_id)
+            try:
+                bot.delete_message(message_id=msg.id, chat_id=user_id)
+            except Exception:
+                pass
             receipt_check(receipt=receipt, user_id=user_id)
         else:
             msg = bot.send_message(chat_id=user_id, text='Капча пройдена неудачно. Попробуйте еще раз')
             sleep(2)
-            bot.delete_message(message_id=msg.id, chat_id=user_id)
+            try:
+                bot.delete_message(message_id=msg.id, chat_id=user_id)
+            except Exception:
+                pass
             capcha(user_id=user_id, receipt=receipt, new_user=new_user)
 
     def capcha(receipt, user_id, new_user):
