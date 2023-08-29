@@ -8,6 +8,7 @@ from datetime import datetime
 from multiprocessing import Process
 from time import sleep, time
 import os
+
 import django
 from captcha.image import ImageCaptcha
 
@@ -19,86 +20,91 @@ import urllib3
 from telebot import types
 from Models.models import User, Category, Product, Orders, FAQ, Message, Receipts, GroupAndChennel, Type_API, API, Bot
 
-shop_id = 'SHOP_ID'
-api_key = 'API_KEY'
-secret_key = 'SECRET_KEY'
-smmplanet_api_key = 'SMMPANEL_API_KEY'
+shop_id = '1E899BDC9573916359BC151ADF7A1F9F'
+api_key = 'w2TpGdzxmkbCX1uF'
+secret_key = 'ODjAeduz'
+smmplanet_api_key = '2eeABucb2aUB3VScDtfIjNjod0okvNK6'
 
 
 def update_services():
-    sleep(5)
     while True:
         try:
-            if datetime.now().hour == 4:
-                data = {
-                    'key': smmplanet_api_key,
-                    'action': 'services',
-                }
-                url = 'https://smmpanel.ru/api/v1'
-                response = requests.post(url, data=data)
-                services = json.loads(response.text)
-                products = Product.objects.all()
-                products_list = []
-                type_api = Type_API.objects.get(API_url=url)
-                api = API.objects.get(type=type_api)
-                for service in services:
-                    a = True
-                    service_id = int(service['service'])
-                    price = float(service['rate']) * 10
-                    min_summ = int(service['min'])
-                    max_summ = int(service['max'])
-                    category = service['category'].split()[0]
-                    subcategory = service['category'].split()[1]
-                    name = service['name']
-                    description = service['desc']
-                    for product in products:
-                        if product.servis_id == service_id:
-                            products_list.append(product)
-                            a = False
-                            product.price = price
-                            product.min_summ = min_summ
-                            product.max_summ = max_summ
-                            product.category.category.name = category
-                            product.category.name = subcategory
-                            product.name = name
-                            product.description = description
-                            product.save()
-                            break
-                    if a:
-                        product_subcategory = Category.objects.filter(name=subcategory)
-                        if not product_subcategory:
-                            product_category = Category.objects.filter(name=category)
-                            if not product_category:
-                                product_category = Category.objects.create(
-                                    name=category
-                                )
-                            product_subcategory = Category.objects.create(
-                                parents=product_category,
-                                name=subcategory
-                            )
-                        Product.objects.create(
-                            api=api,
-                            servis_id=service_id,
-                            category=product_subcategory,
-                            min_summ=min_summ,
-                            max_summ=max_summ,
-                            name=name,
-                            description=description,
-                            price=price,
-                        )
+            data = {
+                'key': smmplanet_api_key,
+                'action': 'services',
+            }
+            url = 'https://smmpanel.ru/api/v1'
+            response = requests.post(url, data=data)
+            services = json.loads(response.text)
+            products = Product.objects.all()
+            products_list = []
+            type_api = Type_API.objects.get(API_url=url)
+            api = API.objects.get(type=type_api)
+            for service in services:
+                a = True
+                service_id = int(service['service'])
+                price = float(service['rate']) * 10
+                min_summ = int(service['min'])
+                max_summ = int(service['max'])
+                category = service['category'].split()[0]
+                subcategory = service['category'].split()[1]
+                name = service['name']
+                description = service['desc']
                 for product in products:
-                    if product not in products_list:
-                        product.delete()
-        except Exception:
-            pass
+                    if product.servis_id == service_id:
+                        products_list.append(product)
+                        a = False
+                        product.price = price
+                        product.min_summ = min_summ
+                        product.max_summ = max_summ
+                        product.category.category.name = category
+                        product.category.name = subcategory
+                        product.name = name
+                        product.description = description
+                        product.save()
+                        break
+                if a:
+                    product_subcategory = Category.objects.filter(name=subcategory)
+                    if not product_subcategory:
+                        product_category = Category.objects.filter(name=category)
+                        if not product_category:
+                            product_category = Category.objects.create(
+                                name=category
+                            )
+                        product_subcategory = Category.objects.create(
+                            parents=product_category,
+                            name=subcategory
+                        )
+                    Product.objects.create(
+                        api=api,
+                        servis_id=service_id,
+                        category=product_subcategory,
+                        min_summ=min_summ,
+                        max_summ=max_summ,
+                        name=name,
+                        description=description,
+                        price=price,
+                    )
+            for product in products:
+                if product not in products_list:
+                    product.delete()
+        except Exception as ex:
+            print(ex)
+        sleep(43200)
 
 
 def check_deposits(token):
-    sleep(2)
     bot = telebot.TeleBot(token)
     while True:
+        sleep(6)
         users = User.objects.filter(pay_balanse=True)
         for user in users:
+            user.pay_try += 1
+            user.save()
+            if user.pay_try >= 20:
+                user.pay_try = 0
+                user.pay_balanse = False
+                user.save()
             try:
                 data = {
                     'shop_id': shop_id,
@@ -145,6 +151,7 @@ def check_order_status(token):
         'Cancelled': 'Отменён',
     }
     while True:
+        sleep(5)
         try:
             orders = Orders.objects.filter(status__in=['Новый', 'В работе'])
             for order in orders:
@@ -165,9 +172,9 @@ def check_order_status(token):
 
 
 def send_message(token):
-    sleep(2)
     bot = telebot.TeleBot(token)
     while True:
+        sleep(4)
         try:
             messages = Message.objects.all()
             users = User.objects.all()
@@ -186,17 +193,16 @@ def send_message(token):
 
 
 def activate_bot(token):
-    is_active = Bot.objects.get(token=token)
-    is_active.is_active = True
-    is_active.save()
-    p1 = Process(target=send_message, args=(token,))
-    p1.start()
-    p2 = Process(target=check_order_status, args=(token,))
-    p2.start()
-    p3 = Process(target=check_deposits, args=(token,))
-    p3.start()
-    p4 = Process(target=update_services)
-    p4.start()
+    main_token = Bot.objects.all()[0].token
+    if main_token == token:
+        p1 = Process(target=send_message, args=(token,))
+        p1.start()
+        p2 = Process(target=check_order_status, args=(token,))
+        p2.start()
+        p3 = Process(target=check_deposits, args=(token,))
+        p3.start()
+        p4 = Process(target=update_services)
+        p4.start()
     bot = telebot.TeleBot(token)
 
     @bot.message_handler(commands=['start'])
@@ -209,16 +215,65 @@ def activate_bot(token):
             pass
 
         if 'M' in message.text:
+            new_user = False
             if not User.objects.filter(user_id=user_id):
                 new_user = True
             receipt_name = message.text.split()[1]
             receipt = Receipts.objects.get(name=receipt_name)
+            markup = types.ReplyKeyboardMarkup()
+            menu = types.KeyboardButton('ℹ️ Показать меню')
+            markup.add(menu)
+            bot.send_message(chat_id=user_id, text='Приветсвуем тебя в нашем боте', reply_markup=markup)
             capcha(user_id=user_id, receipt=receipt, new_user=new_user)
         else:
             if not User.objects.filter(user_id=user_id):
                 create_user(message=message, user_id=user_id)
             chat_id = message.chat.id
+            markup = types.ReplyKeyboardMarkup()
+            menu = types.KeyboardButton('ℹ️ Показать меню')
+            markup.add(menu)
+            bot.send_message(chat_id=user_id, text='Приветсвуем тебя в нашем боте', reply_markup=markup)
             main_menu(chat_id)
+
+    @bot.message_handler(commands=['my_profile'])
+    def my_profile_command(message):
+        chat_id = message.chat.id
+        user = User.objects.get(chat_id=chat_id)
+        my_profile(chat_id=chat_id, user=user)
+
+    @bot.message_handler(commands=['new_order'])
+    def new_order_command(message):
+        chat_id = message.chat.id
+        categorys(chat_id=chat_id)
+
+    @bot.message_handler(commands=['receipts'])
+    def receipts_command(message):
+        chat_id = message.chat.id
+        receipts(chat_id=chat_id)
+
+    @bot.message_handler(commands=['my_orders'])
+    def my_orders_command(message):
+        chat_id = message.chat.id
+        user = User.objects.get(chat_id=chat_id)
+        my_order(chat_id, user)
+
+    @bot.message_handler(commands=['balance'])
+    def balance_command(message):
+        chat_id = message.chat.id
+        user = User.objects.get(chat_id=chat_id)
+        balance(chat_id=chat_id, user=user)
+
+    @bot.message_handler(commands=['help'])
+    def help_command(message):
+        chat_id = message.chat.id
+        bot.send_message(chat_id=chat_id, text='Всегда рады помочь! Заходите: https://t.me/smoservice_bot')
+        main_menu(chat_id)
+
+    @bot.message_handler(commands=['earn'])
+    def earn_command(message):
+        chat_id = message.chat.id
+        user = User.objects.get(chat_id=chat_id)
+        earn(chat_id=chat_id, user=user)
 
     @bot.message_handler(content_types=['new_chat_members', 'text'])
     def connect_group_or_channel_to_user(message):
@@ -244,6 +299,17 @@ def activate_bot(token):
                              text='Бот успешно добавлен в списко ваших чатов, теперь вам нужно прикреить его к чеку')
             sleep(4)
             all_receipts(chat_id=user_chat_id, user=user)
+        elif message.text == 'ℹ️ Показать меню':
+            main_menu(chat_id=message.from_user.id)
+        else:
+            chat_id = message.from_user.id
+            msg = bot.send_message(chat_id=chat_id, text='Данная команда неизвестна, перенаправляю вас в главное меню')
+            sleep(2)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=msg.id)
+            except Exception:
+                pass
+            main_menu(chat_id=chat_id)
 
     @bot.callback_query_handler(func=lambda call: True)
     def callback(call):
@@ -258,6 +324,9 @@ def activate_bot(token):
                 pass
             if data == 'menu':
                 main_menu(chat_id)
+
+            elif data == 'my_profile':
+                my_profile(chat_id=chat_id, user=user)
 
             elif data == 'category':
                 categorys(chat_id=chat_id)
@@ -419,18 +488,35 @@ def activate_bot(token):
             markup.add(last_page, next_page)
 
     def main_menu(chat_id):
-        text = 'SmoFastBot - Это бот для помощи в продвижении ваших социальных сетей. \n' \
+        text = 'SmoFastBot \-\ Это бот для помощи в продвижении ваших социальных сетей\.\ \n' \
                'С помощью этого бота вы можете заказать различные услуги для продвижения своих социальных сетей'
         markup = types.InlineKeyboardMarkup(row_width=2)
-        button1 = types.InlineKeyboardButton('🔥Создать новый заказ', callback_data='category')
-        button2 = types.InlineKeyboardButton('📋Мои заказы', callback_data='my_order')
-        button3 = types.InlineKeyboardButton('🏦Мой баланс', callback_data='balance')
-        button4 = types.InlineKeyboardButton('💸Заработать', callback_data='earn')
-        button5 = types.InlineKeyboardButton('⛑Помощь', callback_data='help')
-        button6 = types.InlineKeyboardButton('💡FAQ', callback_data='faq')
-        button7 = types.InlineKeyboardButton('🧾Чеки', callback_data='receipts')
-        markup.add(button1, button2, button3, button4, button5, button6, button7)
+        button1 = types.InlineKeyboardButton('Мой профиль', callback_data='my_profile')
+        button2 = types.InlineKeyboardButton('🔥Создать новый заказ', callback_data='category')
+        button3 = types.InlineKeyboardButton('📋Мои заказы', callback_data='my_order')
+        button4 = types.InlineKeyboardButton('🏦Мой баланс', callback_data='balance')
+        button5 = types.InlineKeyboardButton('💸Заработать', callback_data='earn')
+        button6 = types.InlineKeyboardButton('⛑Помощь', callback_data='help')
+        button7 = types.InlineKeyboardButton('💡FAQ', callback_data='faq')
+        button8 = types.InlineKeyboardButton('🧾Чеки', callback_data='receipts')
+        markup.add(button1, button2, button3, button4, button5, button6, button7, button8)
         bot.send_message(chat_id=chat_id, text=text, reply_markup=markup, parse_mode="MarkdownV2")
+
+
+    def my_profile(chat_id, user):
+        balance = user.balance
+        order_count = user.orders.all().count()
+        invited_user_count = user.invited_users.all().count()
+        text = 'Мой аккаунт\n' \
+               'Вся необходимая информация о вашем профиле\n\n' \
+               f'👁ID: {chat_id}\n' \
+               f'🏦Баланс: {balance} RUB\n' \
+               f'📋Количество заказов: {order_count}\n' \
+               f'Количество приглашенных пользователей: {invited_user_count}'
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        menu = types.InlineKeyboardButton('Главное меню', callback_data='menu')
+        markup.add(menu)
+        bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
     def categorys(chat_id, pagination_start=0, pagination_end=10):
         categorys = Category.objects.filter(parents=None)[pagination_start:pagination_end]
@@ -694,7 +780,7 @@ def activate_bot(token):
                 bot.delete_message(chat_id=chat_id, message_id=msg.id)
             except Exception:
                 pass
-            thread = threading.Thread(target=get_tokens)
+            thread = threading.Thread(target=get_tokens, args=(token,))
             thread.start()
             main_menu(chat_id=chat_id)
 
@@ -1060,9 +1146,12 @@ def activate_bot(token):
     bot.polling(none_stop=True)
 
 
-def get_tokens():
-    bots = Bot.objects.filter(is_active=False)
-    tokens = [bot.token for bot in bots]
+def get_tokens(token=None):
+    if token:
+        tokens = [token]
+    else:
+        bots = Bot.objects.filter(is_active=False)
+        tokens = [bot.token for bot in bots]
     with ProcessPoolExecutor(max_workers=len(tokens)) as executor:
         executor.map(activate_bot, tokens)
 
