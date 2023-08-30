@@ -9,13 +9,13 @@ from time import sleep, time
 import os
 
 import django
+import validators
 from captcha.image import ImageCaptcha
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SMM_bot.settings')
 django.setup()
 import requests
 import telebot
-import urllib3
 from telebot import types
 from Models.models import User, Category, Product, Orders, FAQ, Message, Receipts, GroupAndChennel, Type_API, API, Bot
 
@@ -42,7 +42,7 @@ def update_services():
             for service in services:
                 a = True
                 service_id = int(service['service'])
-                price = round(float(service['rate']) * 10, 3)
+                price = round(float(service['rate']) / 10, 3)
                 min_summ = int(service['min'])
                 max_summ = int(service['max'])
                 category = service['category'].split()[0]
@@ -88,11 +88,12 @@ def update_services():
                         description=description,
                         price=price,
                     )
-                for product in products:
-                    if product not in products_list:
-                        product.delete()
+            for product in products:
+                if product not in products_list:
+                    product.delete()
         except Exception as ex:
-            print(ex)
+            print('update_services')
+            print(ex, '\n')
         sleep(43200)
 
 
@@ -139,8 +140,9 @@ def check_deposits(token):
                             user.last_pay_id = id
                             user.save()
                             bot.send_message(chat_id=user.user_id, text='Ваш баланс успешно пополнен')
-                except Exception:
-                    pass
+                except Exception as ex:
+                    print('check_deposits')
+                    print(ex, '\n')
 
 
 def check_order_status(token):
@@ -155,7 +157,7 @@ def check_order_status(token):
         'Cancelled': 'Отменён',
     }
     while True:
-        sleep(5)
+        sleep(1)
         try:
             orders = Orders.objects.filter(status__in=['Новый', 'В работе'])
             for order in orders:
@@ -166,13 +168,18 @@ def check_order_status(token):
                 }
                 url = order.product.api.type.API_url
                 response = requests.post(url, data=data)
-                status = json.loads(response.text)['status']
+                status = status_tuple[json.loads(response.text)['status']]
                 if order.status != status:
                     order.status = status_tuple[status]
                     order.save()
+                    if status == 'Отменён':
+                        user = User.objects.filter(orders=order)
+                        user.balance += order.price
+                        user.save()
                     bot.send_message(chat_id=order.order.user_id, text='Статус вашего заказа обновлен')
-        except Exception:
-            pass
+        except Exception as ex:
+            print('check_order_status')
+            print(ex, '\n')
 
 
 def send_message(token):
@@ -192,8 +199,9 @@ def send_message(token):
                         except Exception:
                             pass
                     message.delete()
-        except Exception:
-            pass
+        except Exception as ex:
+            print('send_message')
+            print(ex, '\n')
 
 
 def activate_bot(token):
@@ -224,7 +232,7 @@ def activate_bot(token):
                 new_user = True
             receipt_name = message.text.split()[1]
             receipt = Receipts.objects.get(name=receipt_name)
-            markup = types.ReplyKeyboardMarkup()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             menu = types.KeyboardButton('ℹ️ Показать меню')
             markup.add(menu)
             bot.send_message(chat_id=user_id, text='Приветсвуем тебя в нашем боте', reply_markup=markup)
@@ -233,7 +241,7 @@ def activate_bot(token):
             if not User.objects.filter(user_id=user_id):
                 create_user(message=message, user_id=user_id)
             chat_id = message.chat.id
-            markup = types.ReplyKeyboardMarkup()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             menu = types.KeyboardButton('ℹ️ Показать меню')
             markup.add(menu)
             bot.send_message(chat_id=user_id, text='Приветсвуем тебя в нашем боте', reply_markup=markup)
@@ -554,26 +562,26 @@ def activate_bot(token):
             'quantity': order.quantity
         }
         response = requests.post(url, data=data)
-        order_id = json.loads(response.text)['order']
+        todos = json.loads(response.text)
+        order_id = todos['order']
         order.order_id = order_id
         order.save()
-        bot.send_message(chat_id=chat_id, text=f'Спасибо, ваш заказ "{order.product.name}"  в колличестве {order.quantity}шт принят и находится в статусе: 🆕Новый\n\n '
-                                               f'ID заказа: {order_id}\n'
-                                               'Ожидайте начала выполнения. Наблюдать за заказами и их статусами Вы можете в разделе:\n'
-                                               '📋Мои заказы')
+        bot.send_message(chat_id=chat_id,
+                         text=f'Спасибо, ваш заказ "{order.product.name}"  в колличестве {order.quantity}шт принят и находится в статусе: 🆕Новый\n\n '
+                              f'ID заказа: {order_id}\n'
+                              'Ожидайте начала выполнения. Наблюдать за заказами и их статусами Вы можете в разделе:\n'
+                              '📋Мои заказы')
 
     def new_order_step_three(message, chat_id, product, message_id, number):
         link = message.text
+        prot = 'https://'
+        if prot not in link:
+            link = prot + link
         a = True
-        try:
-            bot.delete_message(chat_id=chat_id, message_id=message.id)
-        except Exception:
-            pass
         user = User.objects.get(user_id=message.from_user.id)
         total_price = round(product.price * number, 2)
         try:
-            resp = urllib3.request("GET", link)
-            if resp.status != 200 or '/t.me/+' in link:
+            if not validators.url(link):
                 raise Exception
         except Exception:
             a = False

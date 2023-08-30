@@ -23,7 +23,7 @@ class User(models.Model):
     user_id = models.IntegerField(verbose_name='ID пользователя')
     inviting_user = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True,
                                       related_name='inviting', verbose_name='Пригласивший пользователь')
-    invited_users = models.ManyToManyField('self', related_name='invited_user', blank=True,
+    invited_users = models.ManyToManyField('self', blank=True,
                                            verbose_name='Приглашенные пользователи')
     balance = models.IntegerField(default=0, verbose_name='Баланс')
     orders = models.ManyToManyField('Orders', blank=True, related_name='order',
@@ -81,6 +81,7 @@ class Product(models.Model):
     name = models.CharField(max_length=64, verbose_name='Название товара')
     description = models.CharField(max_length=128, verbose_name='Описание товара')
     price = models.FloatField(verbose_name='Цена товара')
+    extra_charge = models.FloatField(default=1, verbose_name='Наценка на услугу(1.1 - наценка на 10%)')
 
     def __str__(self):
         return self.name
