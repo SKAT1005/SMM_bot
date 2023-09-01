@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-85v)!4hfabl*)zk((q*ygy2k_rg@$oghunj9la-*hg)#^0gglw
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['89.108.78.234', 'localhost']
+
 
 
 
@@ -78,8 +79,15 @@ WSGI_APPLICATION = 'SMM_bot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'django_project_db',
+        'USER': 'django',
+        'PASSWORD': 'zup7rahghifu',
+        'HOST': 'localhost',
+        'PORT': '',
+        'OPTIONS':{
+            'sslmode': 'disable'
+            }
     }
 }
 
