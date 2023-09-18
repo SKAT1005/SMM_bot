@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-85v)!4hfabl*)zk((q*ygy2k_rg@$oghunj9la-*hg)#^0gglw
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['89.108.78.234', 'localhost']
+ALLOWED_HOSTS = ['89.108.78.234', 'localhost', 'tegro.finance']
 
 
 
