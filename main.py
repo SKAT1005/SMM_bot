@@ -19,10 +19,10 @@ import telebot
 from telebot import types
 from Models.models import User, Category, Product, Orders, FAQ, Message, Receipts, GroupAndChennel, Type_API, API, Bot
 
-shop_id = '1E899BDC9573916359BC151ADF7A1F9F'
-api_key = 'w2TpGdzxmkbCX1uF'
-secret_key = 'ODjAeduz'
-smmplanet_api_key = '2eeABucb2aUB3VScDtfIjNjod0okvNK6'
+shop_id = 'SHOP_ID'
+api_key = 'API_KEY'
+secret_key = 'SECRET_KEY'
+smmplanet_api_key = 'SMMPANEL_API_KEY'
 
 
 def update_services():
